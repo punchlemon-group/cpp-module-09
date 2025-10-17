@@ -1,18 +1,28 @@
+
 NAME = PmergeMe
 
 CC = c++
-CFLAGS = -Wall -Wextra -Werror -std=c++98
+# Strict C++98, pedantic to enforce standard rules
+CFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic
 
 SRCS = main.cpp PmergeMe.cpp
-OBJS = $(SRCS:.cpp=.o)
+OBJDIR = obj
+OBJS = $(addprefix $(OBJDIR)/,$(SRCS:.cpp=.o))
+
+.PHONY: all clean fclean re
 
 all: $(NAME)
 
-$(NAME): $(SRCS)
-	$(CC) $(CFLAGS) $(SRCS) -o $(NAME)
+$(NAME): $(OBJS)
+	$(CC) $(CFLAGS) $(OBJS) -o $(NAME)
+
+# compile .cpp -> obj/*.o, create obj dir if needed
+$(OBJDIR)/%.o: %.cpp
+	@mkdir -p $(OBJDIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(OBJS)
+	rm -rf $(OBJDIR)
 
 fclean: clean
 	rm -f $(NAME)
