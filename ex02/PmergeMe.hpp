@@ -8,6 +8,8 @@ class PmergeMe
 {
 public:
     PmergeMe();
+    PmergeMe(const PmergeMe &other);
+    PmergeMe &operator=(const PmergeMe &other);
     ~PmergeMe();
     template <typename Container>
     void sortContainer(Container &c)

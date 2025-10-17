@@ -1,8 +1,8 @@
 NAME = PmergeMe
 
 CC = c++
-# Strict C++98, pedantic to enforce standard rules, add -I. so headers can be included with <>
-CFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic -I.
+# Strict C++98, pedantic to enforce standard rules
+CFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic
 
 SRCS = main.cpp PmergeMe.cpp Utils.cpp
 OBJDIR = obj
