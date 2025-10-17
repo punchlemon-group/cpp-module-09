@@ -9,10 +9,6 @@ class PmergeMe
 public:
     PmergeMe();
     ~PmergeMe();
-
-    // Generic container sorter: copies container into a vector, runs the
-    // same merge-insertion algorithm, and writes results back. This ensures
-    // the exact same algorithm is applied to every container type (vector, list, ...)
     template <typename Container>
     void sortContainer(Container &c)
     {
