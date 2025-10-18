@@ -31,22 +31,13 @@ int main(int argc, char **argv)
     if (!measure_sort(vm, vec, tv)) return exit_error();
     if (!measure_sort(vm, lst, tl)) return exit_error();
 
-    // Verify that vec and lst have the same contents after sorting
     if (vec.size() != static_cast<size_t>(std::distance(lst.begin(), lst.end())))
-    {
-        std::cerr << "Error: vector and list sizes differ after sorting" << std::endl;
         return exit_error();
-    }
     std::vector<int>::iterator vi = vec.begin();
     std::list<int>::iterator li = lst.begin();
     for (; vi != vec.end() && li != lst.end(); ++vi, ++li)
-    {
         if (*vi != *li)
-        {
-            std::cerr << "Error: vector and list contents differ after sorting" << std::endl;
             return exit_error();
-        }
-    }
 
     std::cout << "After:  ";
     print_container(vec);
