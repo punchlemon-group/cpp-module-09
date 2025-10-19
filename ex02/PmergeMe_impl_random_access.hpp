@@ -17,6 +17,20 @@ struct LessByValue {
     bool operator()(size_t a, size_t b) const { return (*vals)[a] < (*vals)[b]; }
 };
 
+// Reorderer: transform index -> element by looking up a source vector
+template <typename T>
+struct Reorderer
+{
+    const std::vector<T> &source_vec;
+
+    Reorderer(const std::vector<T> &source) : source_vec(source) {}
+
+    T operator()(size_t index) const
+    {
+        return source_vec[index];
+    }
+};
+
 // Helper: binary search + insert for index-based result vector
 template <typename T>
 void binarySearchAndInsertIndex(
@@ -62,30 +76,104 @@ static void createPairs(const Container &c,
     if (i < n) { out_has_straggler = true; out_straggler_idx = i; }
 }
 
-// Helper: recursively sort main chain and produce sorted_main_chain + pend_in_order
+// Compare pairs by the main value (pair.first indexes into the source container)
 template <typename Container>
-void recursivelySortMainChain(
-    Container &c,
-    const std::vector< std::pair<size_t,size_t> > &pairs,
-    const std::vector<size_t> &pend_indices,
-    std::vector<size_t> &out_sorted_main_chain,
-    std::vector<size_t> &out_pend_in_order)
+struct ComparePairsByMainValue
 {
-    out_sorted_main_chain.clear(); out_pend_in_order.clear();
-    std::vector<size_t> main_chain_indices;
-    for (size_t j = 0; j < pairs.size(); ++j) main_chain_indices.push_back(pairs[j].second);
+    const Container &source_container;
+    ComparePairsByMainValue(const Container &c) : source_container(c) {}
+    bool operator()(const std::pair<size_t, size_t> &p1, const std::pair<size_t, size_t> &p2) const
+    {
+        return source_container[p1.first] < source_container[p2.first];
+    }
+};
 
-    std::vector<typename Container::value_type> main_values;
-    for (size_t j = 0; j < main_chain_indices.size(); ++j) main_values.push_back(c[ main_chain_indices[j] ]);
+// Recursively sort a vector of (main, pend) pairs in-place using the Ford-Johnson order
+// applied to the main values. This helper reuses fordJohnsonOrder on the main values
+// and then permutes the pairs accordingly.
+// forward-declare generateInsertionOrder so templates can call it
+static inline std::vector<size_t> generateInsertionOrder(size_t pend_count);
 
+template <typename Container>
+static std::vector<size_t> recursivelySortPairs(Container &c, std::vector<std::pair<size_t, size_t> > &pairs_to_sort, bool has_straggler, size_t straggler_index)
+{
+    std::vector<size_t> empty_result;
+    if (pairs_to_sort.size() == 0) {
+        // if there is only a straggler, return it
+        if (has_straggler) {
+            empty_result.push_back(straggler_index);
+        }
+        return empty_result;
+    }
+
+    if (pairs_to_sort.size() == 1)
+    {
+        std::vector<size_t> r;
+        r.push_back(pairs_to_sort[0].first);
+        r.push_back(pairs_to_sort[0].second);
+        if (has_straggler) r.push_back(straggler_index);
+        return r;
+    }
+
+    // copy container values into a vector for binary searches and comparisons
+    typedef typename Container::value_type Elem;
+    std::vector<Elem> values;
+    values.reserve(c.size());
+    for (size_t i = 0; i < c.size(); ++i) values.push_back(c[i]);
+
+    // extract main values (values at pair.first)
+    std::vector<Elem> main_values;
+    main_values.reserve(pairs_to_sort.size());
+    for (size_t i = 0; i < pairs_to_sort.size(); ++i)
+        main_values.push_back(values[ pairs_to_sort[i].first ]);
+
+    // compute Ford-Johnson order for main values
     std::vector<size_t> mains_order = fordJohnsonOrder(main_values);
 
-    for (size_t k = 0; k < mains_order.size(); ++k)
-    {
+    // build sorted_main_chain and pend_in_order according to mains_order
+    std::vector<size_t> sorted_main_chain;
+    std::vector<size_t> pend_in_order;
+    sorted_main_chain.reserve(mains_order.size());
+    pend_in_order.reserve(mains_order.size());
+    for (size_t k = 0; k < mains_order.size(); ++k) {
         size_t idx_in_pairs = mains_order[k];
-        out_sorted_main_chain.push_back(main_chain_indices[idx_in_pairs]);
-        out_pend_in_order.push_back(pend_indices[idx_in_pairs]);
+        sorted_main_chain.push_back(pairs_to_sort[idx_in_pairs].first);
+        pend_in_order.push_back(pairs_to_sort[idx_in_pairs].second);
     }
+
+    // if there are no pendings, result is just sorted mains (+ optional straggler)
+    if (pend_in_order.empty()) {
+        std::vector<size_t> result = sorted_main_chain;
+        if (has_straggler) result.push_back(straggler_index);
+        return result;
+    }
+
+    // perform Jacobsthal-based insertion of pendings into sorted_main_chain
+    std::vector<size_t> result = sorted_main_chain;
+    // insert the first pend at the beginning
+    result.insert(result.begin(), pend_in_order[0]);
+
+    size_t m = pend_in_order.size();
+    std::vector<size_t> insertion_order = generateInsertionOrder(m);
+
+    for (size_t ii = 0; ii < insertion_order.size(); ++ii)
+    {
+        size_t pid = insertion_order[ii] - 1;
+        size_t pend_idx = pend_in_order[pid];
+        size_t assoc_main_orig = sorted_main_chain[pid];
+
+        size_t pos = 0; for (; pos < result.size(); ++pos) if (result[pos] == assoc_main_orig) break;
+        if (pos == 0) { result.insert(result.begin(), pend_idx); }
+        else {
+            // binary search within [0, pos) and insert
+            binarySearchAndInsertIndex<Elem>(result, values, pend_idx, pos);
+        }
+    }
+
+    if (has_straggler)
+        binarySearchAndInsertIndex<Elem>(result, values, straggler_index, result.size());
+
+    return result;
 }
 
 // Helper: generate insertion order from Jacobsthal-like sequence (vector variant)
@@ -238,27 +326,20 @@ void PmergeMe::sort_impl(Container &c, std::random_access_iterator_tag)
     size_t straggler_index = 0;
     createPairs<Container>(c, pairs, pend_indices, has_straggler, straggler_index);
 
-    std::vector<size_t> sorted_main_chain;
-    std::vector<size_t> pend_in_order;
-    recursivelySortMainChain<Container>(c, pairs, pend_indices, sorted_main_chain, pend_in_order);
-
-    if (pend_in_order.empty())
+    // Build vector of (main, pend) pairs where first = main (bigger), second = pend (smaller)
+    std::vector< std::pair<size_t, size_t> > main_pend_pairs;
+    main_pend_pairs.reserve(pairs.size());
+    for (size_t i = 0; i < pairs.size(); ++i)
     {
-        Container tmp;
-        for (size_t r = 0; r < sorted_main_chain.size(); ++r) tmp.push_back(c[ sorted_main_chain[r] ]);
-        if (has_straggler) tmp.push_back(c[ straggler_index ]);
-        c.swap(tmp);
-        return;
+        // pairs[i] already stores (smaller, larger) as (first, second) in createPairs,
+        // but we want pair.first == main (larger) and pair.second == pend (smaller)
+        size_t small_idx = pairs[i].first;
+        size_t large_idx = pairs[i].second;
+        main_pend_pairs.push_back(std::make_pair(large_idx, small_idx));
     }
 
-    std::vector<size_t> result_idx = sorted_main_chain;
-    result_idx.insert(result_idx.begin(), pend_in_order[0]);
-
-    std::vector<size_t> insertion_order = generateInsertionOrder(pend_in_order.size());
-
-    insertPendings<Container>(c, result_idx, pend_in_order, sorted_main_chain, insertion_order);
-    if (has_straggler)
-        insertStragglerIntoResult<Container>(c, result_idx, straggler_index);
+    // Compute final index order using the Ford-Johnson based pair sorter
+    std::vector<size_t> result_idx = recursivelySortPairs<Container>(c, main_pend_pairs, has_straggler, straggler_index);
 
     applyResult<Container>(c, result_idx);
 }
