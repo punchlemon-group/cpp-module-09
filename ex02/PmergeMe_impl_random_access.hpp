@@ -17,29 +17,6 @@ struct LessByValue {
     bool operator()(size_t a, size_t b) const { return (*vals)[a] < (*vals)[b]; }
 };
 
-// Helper: create index-based pairs from a values vector (used by fordJohnsonOrder)
-template <typename T>
-void createPairsFromIndices(
-    const std::vector<T> &values,
-    std::vector< std::pair<size_t, size_t> > &out_pairs,
-    std::vector<size_t> &out_pends,
-    bool &out_has_straggler,
-    size_t &out_straggler_idx)
-{
-    out_pairs.clear(); out_pends.clear(); out_has_straggler = false; out_straggler_idx = 0;
-    size_t n = values.size();
-    if (n == 0) return;
-    size_t i = 0;
-    for (; i + 1 < n; i += 2)
-    {
-        size_t a = i;
-        size_t b = i + 1;
-        if (values[a] <= values[b]) { out_pairs.push_back(std::make_pair(a,b)); out_pends.push_back(a); }
-        else { out_pairs.push_back(std::make_pair(b,a)); out_pends.push_back(b); }
-    }
-    if (i < n) { out_has_straggler = true; out_straggler_idx = i; }
-}
-
 // Helper: binary search + insert for index-based result vector
 template <typename T>
 void binarySearchAndInsertIndex(
@@ -59,7 +36,7 @@ void binarySearchAndInsertIndex(
 
 // Random-access helper: build pairs using indices
 template <typename Container>
-void createPairs(Container &c,
+static void createPairs(const Container &c,
     std::vector< std::pair<size_t, size_t> > &out_pairs,
     std::vector<size_t> &out_pends,
     bool &out_has_straggler,
@@ -74,8 +51,8 @@ void createPairs(Container &c,
     {
         size_t a = i;
         size_t b = i + 1;
-        typename Container::value_type &av = c[a];
-        typename Container::value_type &bv = c[b];
+        const typename Container::value_type &av = c[a];
+        const typename Container::value_type &bv = c[b];
         bool le = (av <= bv);
         size_t first_idx = le ? a : b;
         size_t second_idx = le ? b : a;
@@ -203,7 +180,8 @@ std::vector<size_t> fordJohnsonOrder(const std::vector<T> &values)
     std::vector< std::pair<size_t, size_t> > pairs;
     std::vector<size_t> pend_indices;
     bool has_straggler = false; size_t straggler_index = 0;
-    createPairsFromIndices<T>(values, pairs, pend_indices, has_straggler, straggler_index);
+    // use the unified createPairs (explicitly instantiate with std::vector<T>)
+    createPairs< std::vector<T> >(values, pairs, pend_indices, has_straggler, straggler_index);
 
     std::vector<size_t> main_chain_indices;
     for (size_t j = 0; j < pairs.size(); ++j) main_chain_indices.push_back(pairs[j].second);
