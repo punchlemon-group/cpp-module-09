@@ -10,6 +10,16 @@ int exit_error()
     return 1;
 }
 
+// Compare vector<int> and list<int> for equal length and element-wise equality
+bool containers_equal(const std::vector<int> &vec, const std::list<int> &lst)
+{
+    if (vec.size() != static_cast<size_t>(std::distance(lst.begin(), lst.end()))) return false;
+    std::vector<int>::const_iterator vi = vec.begin();
+    std::list<int>::const_iterator li = lst.begin();
+    for (; vi != vec.end() && li != lst.end(); ++vi, ++li) if (*vi != *li) return false;
+    return true;
+}
+
 int main(int argc, char **argv)
 {
     if (argc < 2) return exit_error();
@@ -31,13 +41,8 @@ int main(int argc, char **argv)
     if (!measure_sort(vm, vec, tv)) return exit_error();
     if (!measure_sort(vm, lst, tl)) return exit_error();
 
-    if (vec.size() != static_cast<size_t>(std::distance(lst.begin(), lst.end())))
+    if (!containers_equal(vec, lst))
         return exit_error();
-    std::vector<int>::iterator vi = vec.begin();
-    std::list<int>::iterator li = lst.begin();
-    for (; vi != vec.end() && li != lst.end(); ++vi, ++li)
-        if (*vi != *li)
-            return exit_error();
 
     std::cout << "After:  ";
     print_container(vec);
