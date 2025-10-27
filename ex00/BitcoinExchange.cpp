@@ -1,9 +1,9 @@
-#include <BitcoinExchange.hpp>
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <cstdlib>
 #include <stdexcept>
+#include "BitcoinExchange.hpp"
 
 BitcoinExchange::BitcoinExchange() : _filename(""), _delimiter(',') {}
 
