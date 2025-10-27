@@ -1,7 +1,6 @@
 NAME = PmergeMe
 
 CC = c++
-# Strict C++98, pedantic to enforce standard rules
 CFLAGS = -Wall -Wextra -Werror -std=c++98 -pedantic $(DEFS)
 
 DEFS =
