@@ -1,5 +1,4 @@
-#ifndef UTILS_HPP
-#define UTILS_HPP
+#pragma once
 
 #include <string>
 #include <vector>
@@ -30,7 +29,9 @@ template <typename Container>
 bool measure_sort(PmergeMe &pm, Container &c, double &out_time_us)
 {
     double t1 = get_time_us();
-    try { pm.sortContainer(c); } catch(...) { return false; }
+    try { pm.sortContainer(c); }
+    catch (const std::exception &e) { std::cerr << "Exception during sort: " << e.what() << std::endl; return false; }
+    catch (...) { std::cerr << "Unknown exception during sort" << std::endl; return false; }
     double t2 = get_time_us();
     out_time_us = t2 - t1;
     return true;
@@ -49,7 +50,3 @@ void printResult(const char *label, const Container &c, double time_us)
     std::cout << std::setw(eff_width) << std::right << c.size();
     std::cout << " elements with " << label << " : " << time_us << " us" << std::endl;
 }
-
-
-
-#endif // UTILS_HPP

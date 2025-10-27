@@ -1,9 +1,7 @@
-#ifndef PMERGEME_HPP
-#define PMERGEME_HPP
+#pragma once
 
-#include <vector>
-#include <list>
 #include <iterator>
+#include "ElementSequence.hpp"
 
 class PmergeMe
 {
@@ -23,13 +21,12 @@ public:
 
 private:
     template <typename Container>
-    void sort_impl(Container &c, std::random_access_iterator_tag);
+    void sort_impl(Container &c, std::random_access_iterator_tag) {
+        ElementSequence<Container> seq(c);
+        seq.sort();
+        c = seq.getResult();
+    }
 
-    template <typename Container>
-    void sort_impl(Container &c, std::bidirectional_iterator_tag);
+    // template <typename Container>
+    // void sort_impl(Container &c, std::bidirectional_iterator_tag);
 };
-
-#include "PmergeMe_impl_random_access.hpp"
-#include "PmergeMe_impl_bidirectional.hpp"
-
-#endif // PMERGEME_HPP
