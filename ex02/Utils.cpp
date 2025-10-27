@@ -2,6 +2,8 @@
 
 #include <sstream>
 #include <string>
+#include <cerrno>
+#include <cstdlib>
 #include <time.h>
 #include <sys/time.h>
 #include <stdint.h>
