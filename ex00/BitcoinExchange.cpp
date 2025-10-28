@@ -81,14 +81,16 @@ void BitcoinExchange::processFile(const std::string* inputFile, const char delim
     while (getline(file, line)) {
         try {
             std::pair<std::string, double> data = processLine(isInputFile, lineNumber, line, delim);
-            if (!isInputFile) _db[data.first] = data.second;
+            const std::string& date = data.first;
+            double value = data.second;
+            if (value < 0) {
+                throw std::runtime_error(makeErrorString(isInputFile, lineNumber, "not a positive number."));
+            }
+            if (!isInputFile) {
+                _db[date] = value;
+            }
             else {
-                const std::string& date = data.first;
-                double value = data.second;
-                if (value < 0) {
-                    throw std::runtime_error(makeErrorString(isInputFile, lineNumber, "not a positive number."));
-                }
-                else if (value > 1000) {
+                if (value > 1000) {
                     throw std::runtime_error(makeErrorString(isInputFile, lineNumber, "too large a number."));
                 }
                 else {
